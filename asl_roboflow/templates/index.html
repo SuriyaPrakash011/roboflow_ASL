@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASL Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            margin-top: 20px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #output {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #555;
+        }
+        #translations {
+            margin-top: 10px;
+            font-size: 16px;
+            color: #444;
+        }
+        label, select {
+            margin-top: 15px;
+            font-size: 16px;
+        }
+        /* Loading screen styles */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            visibility: hidden;
+        }
+        #loadingOverlay.visible {
+            visibility: visible;
+        }
+        #loadingOverlay .spinner {
+            width: 80px;
+            height: 80px;
+            border: 10px solid #ccc;
+            border-top: 10px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <script>
+        async function uploadImages() {
+            const files = document.getElementById('images').files;
+            const selectedLanguage = document.getElementById('languageSelect').value;
+
+            if (files.length === 0) {
+                alert('Please select at least one image to upload.');
+                return;
+            }
+
+            // Show the loading overlay
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.classList.add('visible');
+
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('images', file);
+            }
+            formData.append('language', selectedLanguage);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    const predictedWord = result.predicted_word;
+                    const translatedText = result.translation;
+
+                    // Update output text
+                    document.getElementById('output').innerText = `Predicted Word: ${predictedWord}`;
+                    document.getElementById('translations').innerText = `Translation (${selectedLanguage.toUpperCase()}): ${translatedText}`;
+
+                    // Use Web Speech API to play the audio
+                    const synth = window.speechSynthesis;
+                    const utterance = new SpeechSynthesisUtterance(translatedText);
+                    utterance.lang = selectedLanguage; // Set language for speech synthesis
+                    synth.speak(utterance);
+                } else {
+                    document.getElementById('output').innerText = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                document.getElementById('output').innerText = `Error: ${error.message}`;
+            } finally {
+                // Hide the loading overlay
+                loadingOverlay.classList.remove('visible');
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>ASL Prediction</h1>
+    <form onsubmit="event.preventDefault(); uploadImages();">
+        <input type="file" id="images" name="images" accept="image/*" multiple required>
+        <label for="languageSelect">Select Translation Language:</label>
+        <select id="languageSelect" name="language">
+            <option value="en">English</option>
+            <option value="es">Spanish</option>
+            <option value="fr">French</option>
+            <option value="de">German</option>
+            <option value="hi">Hindi</option>
+            <option value="zh">Chinese</option>
+        </select>
+        <button type="submit">Upload and Predict</button>
+    </form>
+    <p id="output"></p>
+    <p id="translations"></p>
+
+    <!-- Loading overlay -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+</body>
+</html>
